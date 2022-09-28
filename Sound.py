@@ -1,10 +1,8 @@
+from warnings import catch_warnings
 import speech_recognition as sr
 import soundfile as sf
 # from pydub import AudioSegment
 import os
-import numpy as np
-import time as t
-import statistics as stat
 
 path = "c:/users/nicko/spr/microphone_results.wav"
 
@@ -17,17 +15,10 @@ path = "c:/users/nicko/spr/microphone_results.wav"
 
 # the data to be returned is where there is speech
 r = sr.Recognizer()
-# getting a recording
-with sr.Microphone() as source:
-    print("Say something!")
-    audio = r.listen(source)
 
-with open("microphone_results.wav", "wb") as f:
-    f.write(audio.get_wav_data())
-
-
-r.energy_threshold = 4000
-r.dynamic_energy_threshold = True
+energy = 6000
+r.energy_threshold = energy
+# r.dynamic_energy_threshold = True
 
 with sr.AudioFile(path) as source:
     audio = r.record(source)  # read the entire audio file
@@ -48,8 +39,10 @@ print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 # and the start and end time in milliseconds for each token contained in the transcript.
 # This value should be used only for debugging purposes
 # as Wit.ai focuses on intents, entities and traits.
-
-speech = words["speech"]["tokens"]
+try:
+    speech = words["speech"]["tokens"]
+except:
+    print("no speech recognized")
 
 segments = []
 
@@ -57,70 +50,64 @@ for i in speech:
     segments.append([i["start"], i["end"]])
 # print(speech)
 
-
 print("cleaned data: ", segments)
+print("\n================================================")
+print("amount of voice segments: ", len(segments))
+print("number currently: ", energy)
+print("==================================================")
 
 # divide the total time by amount of frames, then multiply the index by that constant
 
 
-with sf.SoundFile(path, 'r+') as f:
-    samp_rate = f.samplerate
-    data = f.read()
-    # print("size of data: ", data.size)
-    # print(f.frames)
-    for x in range(data.size):
-        time = x/samp_rate
-        print("time of frame: ", time)
+def refine():
+    with sf.SoundFile(path, 'r+') as f:
+        samp_rate = f.samplerate
+        data = f.read()
+        # print("size of data: ", data.size)
+        print(f.frames)
+        print("=================================")
+        print("data: ", data)
+        print("=================================")
+        x = 0
         baby = 0
-        if time > segments[baby][1]:
-            baby += 1
-        else:
-            if segments[baby][0] <= time <= segments[baby][1]:
-                continue
+        true_fpms = samp_rate/1000
+        print("ratio: ", true_fpms)
+        print("size of data: ", data.size)
+        while x < data.size:
+            print("current index: ", x)
+            print("current time: ", x/samp_rate)
+            print("segment index:  ", baby)
+            if baby < len(segments):
+                idx = int(segments[baby][0]*true_fpms)
+                print("cleaning... ", x, " to ", idx)
+                if x != idx:
+                    data[x:idx] = 0
+                    print("data cleaned: ", data[x:idx])
             else:
-                data[x] = 0
+                print("to end : ", data[x:])
+                data[x:] = 0
+                print("NEW to end : ", data[x:])
+                break
+            # print("time of frame: ", time)
 
-    # f.seek(pos)
+            # checks if frame is not part of the segments containing words, greater than the current segment
+            # then it increments the segment if true
 
-    print(
-        "======================================================================")
-    print("new data: ", data)
-    print(
-        "======================================================================")
+            x = int(segments[baby][1]*true_fpms)
+            print("x is now : ", segments[baby][1],
+                  " x ", true_fpms)
+            baby += 1
+        # f.seek(pos)
 
-    f.write(data)
-    f.close()
+        print(
+            "======================================================================")
+        print("new data: ", data)
+        print(
+            "======================================================================")
 
-    # while f.tell() < f.frames:
+        print("new size: ", f.frames)
+        sf.write(path, data, samplerate=samp_rate)
+        f.close()
 
-    #     pos = f.tell()
-    #     print("position: ", pos)
 
-# print("old data: ", data)
-
-# stdv = np.std(data)
-
-# print("-----------------------")
-# print("standard dev: ", stdv)
-# print("-----------------------")
-
-# mean = np.mean(data)
-
-# print("-----------------------")
-# print("mean: ", mean)
-# print("-----------------------")
-
-# sum = 0
-# elements = 0
-# this just checks to see if the audio volume val is relative to the mean and adds it to be averaged
-# for i in data:
-
-#     if abs(abs(i[0])-stdv) > mean:
-#         elements += 1
-#         sum += abs(i[0])
-
-# avg = sum/len(data)
-
-# refine(1)
-# f.close()
-# play(song)
+refine()
