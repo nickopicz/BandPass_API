@@ -1,23 +1,5 @@
-import speech_recognition as sr
 
-from gcloud import storage
-
-
-from oauth2client.service_account import ServiceAccountCredentials
-
-
-r = sr.Recognizer()
-r.pause_threshold = 8000
-# getting a recording
-with sr.Microphone() as source:
-    print("Say something!")
-    audio = r.listen(source, timeout=2, phrase_time_limit=10)
-
-with open("microphone_results.wav", "wb") as f:
-    f.write(audio.get_wav_data())
-
-
-credentials_dict = {
+{
     "type": "service_account",
     "project_id": "speech-recog-363719",
     "private_key_id": "5d0d5205a97a0f3a30801319f4b79fbbfbe91b17",
@@ -29,12 +11,3 @@ credentials_dict = {
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
     "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/nick-devmane%40speech-recog-363719.iam.gserviceaccount.com"
 }
-
-credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-    credentials_dict
-)
-
-client = storage.Client(credentials=credentials, project="sound_recog")
-bucket = client.get_bucket("spr_nick")
-blob = bucket.blob("./microphone_Results.wav")
-blob.upload_from_filename("./microphone_Results.wav")

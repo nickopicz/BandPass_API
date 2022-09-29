@@ -3,7 +3,8 @@ import speech_recognition as sr
 import soundfile as sf
 # from pydub import AudioSegment
 import os
-
+from google.cloud import speech
+from google.oauth2 import service_account
 path = "c:/users/nicko/spr/microphone_results.wav"
 
 
@@ -18,45 +19,104 @@ r = sr.Recognizer()
 
 energy = 6000
 r.energy_threshold = energy
-# r.dynamic_energy_threshold = True
-
-with sr.AudioFile(path) as source:
-    audio = r.record(source)  # read the entire audio file
-
-# Wit.ai keys are 32-character uppercase alphanumeric strings
-WIT_AI_KEY = "B6BWMKRUCVRZMC5TZN5FEHDSQMUCSR5F"
-try:
-    words = r.recognize_wit(audio, key=WIT_AI_KEY, show_all=True)
-except sr.UnknownValueError:
-    print("Wit.ai could not understand audio")
-except sr.RequestError as e:
-    print("Could not request results from Wit.ai service; {0}".format(e))
-print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-print("object returned: ", words)
-print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-
-# Object with speech details. This object will contain the speech confidence
-# and the start and end time in milliseconds for each token contained in the transcript.
-# This value should be used only for debugging purposes
-# as Wit.ai focuses on intents, entities and traits.
-try:
-    speech = words["speech"]["tokens"]
-except:
-    print("no speech recognized")
 
 segments = []
 
-for i in speech:
-    segments.append([i["start"], i["end"]])
-# print(speech)
 
-print("cleaned data: ", segments)
-print("\n================================================")
-print("amount of voice segments: ", len(segments))
-print("number currently: ", energy)
-print("==================================================")
+def transpose_gs():
+    credentials = service_account.Credentials.from_service_account_file(
+        "bin\speech-recog-363719-5d0d5205a97a.json")
+
+    client = speech.SpeechClient(credentials=credentials)
+
+    # The name of the audio file to transcribe
+    gcs_uri = "gs://spr_nick/./microphone_results.wav"
+
+    audio1 = speech.RecognitionAudio(uri=gcs_uri)
+
+    config = speech.RecognitionConfig(
+        language_code="en-US",
+        enable_word_confidence=True,
+        enable_word_time_offsets=True,
+        audio_channel_count=2,
+    )
+
+    # Detects speech in the audio file
+    operation = client.long_running_recognize(config=config, audio=audio1)
+
+    print("Waiting for operation to complete...")
+    result = operation.result(timeout=90)
+    print("+++++++++++++++++++++++++++++++++++++++++ \n Speech to text \n=================================================")
+    print("results: ", result.results)
+
+    for result in result.results:
+        alternative = result.alternatives[0]
+        print("Transcript: {}".format(alternative.transcript))
+        print("Confidence: {}".format(alternative.confidence))
+        print(alternative)
+
+        for word_info in alternative.words:
+            word = word_info.word
+            start_time = word_info.start_time
+            end_time = word_info.end_time
+
+            print("datatype: ", type(start_time))
+
+            print("both start and end times for ", word, ": ",
+                  start_time.total_seconds()*1000, " - ", end_time.total_seconds()*1000)
+
+            print("time in seconds: ", start_time.seconds,
+                  " to ", end_time.seconds)
+
+            # appends the recognized words start and end point as segments of talking
+            # values to be used when setting dcb to 0,
+            segments.append([start_time.total_seconds()*1000,
+                            end_time.total_seconds()*1000])
+            # print(
+            #     f"Word: {word}, start_time: {start_time.total_seconds()}, end_time: {end_time.total_seconds()}"
+            # )
+    print(segments)
+# r.dynamic_energy_threshold = True
+
+
+def transpose_wit():
+    with sr.AudioFile(path) as source:
+        audio = r.record(source)  # read the entire audio file
+
+    # Wit.ai keys are 32-character uppercase alphanumeric strings
+    WIT_AI_KEY = "B6BWMKRUCVRZMC5TZN5FEHDSQMUCSR5F"
+    try:
+        words = r.recognize_wit(audio, key=WIT_AI_KEY, show_all=True)
+    except sr.UnknownValueError:
+        print("Wit.ai could not understand audio")
+    except sr.RequestError as e:
+        print("Could not request results from Wit.ai service; {0}".format(e))
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print("object returned: ", words)
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+    # Object with speech details. This object will contain the speech confidence
+    # and the start and end time in milliseconds for each token contained in the transcript.
+    # This value should be used only for debugging purposes
+    # as Wit.ai focuses on intents, entities and traits.
+    try:
+        speech = words["speech"]["tokens"]
+    except:
+        print("no speech recognized")
+
+    for i in speech:
+        segments.append([i["start"], i["end"]])
+    # print(speech)
+
+    print("cleaned data: ", segments)
+    print("\n================================================")
+    print("amount of voice segments: ", len(segments))
+    print("number currently: ", energy)
+    print("==================================================")
 
 # divide the total time by amount of frames, then multiply the index by that constant
+
+# def refine_with_gs():
 
 
 def refine():
@@ -77,12 +137,13 @@ def refine():
             print("current index: ", x)
             print("current time: ", x/samp_rate)
             print("segment index:  ", baby)
-            if baby < len(segments):
+            if baby < len(segments)-1:
+
                 idx = int(segments[baby][0]*true_fpms)
                 print("cleaning... ", x, " to ", idx)
-                if x != idx:
-                    data[x:idx] = 0
-                    print("data cleaned: ", data[x:idx])
+                # if x != idx:
+                data[x:idx] = 0
+                print("data cleaned: ", data[x:idx])
             else:
                 print("to end : ", data[x:])
                 data[x:] = 0
@@ -110,4 +171,5 @@ def refine():
         f.close()
 
 
+transpose_gs()
 refine()
