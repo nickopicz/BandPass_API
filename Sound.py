@@ -1,3 +1,4 @@
+from statistics import median
 from warnings import catch_warnings
 import speech_recognition as sr
 import soundfile as sf
@@ -5,7 +6,9 @@ import soundfile as sf
 import os
 from google.cloud import speech
 from google.oauth2 import service_account
-path = "c:/users/nicko/spr/microphone_results.wav"
+import numpy as np
+import scipy.stats as stat
+path = "./zara_love.wav"
 
 
 # assert os.path.isfile(path)
@@ -30,7 +33,7 @@ def transpose_gs():
     client = speech.SpeechClient(credentials=credentials)
 
     # The name of the audio file to transcribe
-    gcs_uri = "gs://spr_nick/./microphone_results.wav"
+    gcs_uri = "gs://spr_nick/./evi.wav"
 
     audio1 = speech.RecognitionAudio(uri=gcs_uri)
 
@@ -116,7 +119,10 @@ def transpose_wit():
 
 # divide the total time by amount of frames, then multiply the index by that constant
 
-# def refine_with_gs():
+
+# smooths audio and removes unexpected jumps in sample, causing an unwanted noise
+def fourier_smooth():
+    return
 
 
 def refine():
@@ -132,7 +138,8 @@ def refine():
         baby = 0
         true_fpms = samp_rate/1000
         print("ratio: ", true_fpms)
-        print("size of data: ", data.size)
+        print("size of data : ", data.size)
+
         while x < data.size:
             print("current index: ", x)
             print("current time: ", x/samp_rate)
@@ -158,15 +165,43 @@ def refine():
             print("x is now : ", segments[baby][1],
                   " x ", true_fpms)
             baby += 1
+
+        temp = []
+
+        for i in data:
+            temp.append(i[0])
+
+        temp = np.sort(data)
+        temp = np.delete(temp, np.where(temp == 0))
+
+        sevenfive = temp[temp.size-temp.size//4]
+        twofive = temp[temp.size//4]
+
+        interquartile_range = stat.iqr(temp)
+
+        iqr_rule_1p5 = interquartile_range*1.5
+
+        upper = sevenfive + iqr_rule_1p5
+
+        lower = twofive - iqr_rule_1p5
+        print(lower)
+        print("interquartile range: ", interquartile_range)
         # f.seek(pos)
 
-        print(
-            "======================================================================")
-        print("new data: ", data)
-        print(
-            "======================================================================")
+        # print(
+        #     "======================================================================")
+        # print("new data: ", data)
+        # print(
+        #     "======================================================================")
 
-        print("new size: ", f.frames)
+        for i in range(len(data)):
+            if data[i][0] > upper:
+                data[i] = 0
+            elif data[i][0] < lower:
+                data[i] = 0
+
+        # print("new size: ", f.frames)
+
         sf.write(path, data, samplerate=samp_rate)
         f.close()
 
