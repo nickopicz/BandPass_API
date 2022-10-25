@@ -7,7 +7,6 @@ An audio refinery program that uses speech-to-text and cleans out background noi
 # 1. Install Dependencies.
 First make sure python3 is installed on your local system.
 Make sure you have pip installed as a cli.
-
 Next, run these following commands:
 pip install speech_recognition
 pip install soundfile as sf
