@@ -9,10 +9,10 @@ First make sure python3 is installed on your local system.
 Make sure you have pip installed as a cli.
 Next, run these following commands:
 <br />pip install speech_recognition
-pip install soundfile as sf
-pip install wave
-pip install webrtcvad
-pip install contextlib
+<br />pip install soundfile as sf
+<br />pip install wave
+<br />pip install webrtcvad
+<br />pip install contextlib
 
 
 
