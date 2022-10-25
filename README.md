@@ -2,7 +2,9 @@
 An audio refinery program that uses speech-to-text and cleans out background noise.
 
 
-# 1 Install Dependencies.
+
+
+# 1. Install Dependencies.
 First make sure python3 is installed on your local system.
 Make sure you have pip installed as a cli.
 
@@ -15,13 +17,13 @@ pip install contextlib
 
 
 
-# 1. Make a Recording.
+# 2. Make a Recording.
 
 You can create your own recording within this directory by running the file "make_recording.py"
 This makes it easy to test, since it generates an uncorrupted wav file. 
 
 
-# 2. Clean up Audio.
+# 3. Clean up Audio.
 
 You can either make a short recording within the directory, or import an audio file from your system. 
 You can clean your custom audio by changing the "path1" variable of "Refine.py",
