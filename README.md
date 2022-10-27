@@ -8,7 +8,9 @@ An audio refinery program that uses speech-to-text and cleans out background noi
 First make sure python3 is installed on your local system.
 Make sure you have pip installed as a cli. 
 <br />
-Next, run these following commands:
+After creating a dedicated python workspace...
+<br />
+Run these following commands:
 <br />pip install speech_recognition
 <br />pip install soundfile as sf
 <br />pip install wave
