@@ -1,11 +1,20 @@
-from flask import Flask, request, flash, redirect, url_for
+from json import JSONEncoder
+from flask import Flask, request, flash, redirect, url_for, send_from_directory
 from flask_ngrok import run_with_ngrok
 from werkzeug.utils import secure_filename
 import os
+from pyngrok import ngrok
 
 app = Flask(__name__)
+app.secret_key = "wqm7dajh"
+
+ngrok.set_auth_token("2GkgswOuCD9edDpcX4vAmal3Xs8_4pW8C8s7AAbitRR8Vf4EA")
+
+
 run_with_ngrok(app)
-upload_dir = "../uploads"
+
+
+upload_dir = "./uploads"
 
 ALLOWED_EXTENSIONS = {'wav'}
 
@@ -36,14 +45,15 @@ def upload_file():
                                     filename=filename))
 
     return '''
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>
+    this is returned if the post method
+    doesnt work
     '''
+
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'],
+                               filename)
 
 
 if __name__ == "__main__":
