@@ -10,8 +10,11 @@ Make sure you have pip installed as a cli.
 <br />
 After creating a dedicated python workspace...
 <br />
+<br />
 Run these following commands:
-<br />pip install speech_recognition
+<br />
+<br />
+pip install speech_recognition
 <br />pip install soundfile as sf
 <br />pip install wave
 <br />pip install webrtcvad
