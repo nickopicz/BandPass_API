@@ -1,10 +1,9 @@
-from json import JSONEncoder
-from flask import Flask, request, flash, redirect, url_for, send_from_directory
+import json
+from flask import Flask, request, flash, redirect, url_for, send_from_directory, abort, jsonify, make_response
 from flask_ngrok import run_with_ngrok
 from werkzeug.utils import secure_filename
 import os
 from pyngrok import ngrok
-
 app = Flask(__name__)
 app.secret_key = "wqm7dajh"
 
@@ -14,11 +13,12 @@ ngrok.set_auth_token("2GkgswOuCD9edDpcX4vAmal3Xs8_4pW8C8s7AAbitRR8Vf4EA")
 run_with_ngrok(app)
 
 
-upload_dir = "./uploads"
+upload_dir = "C:/Uploads"
 
 ALLOWED_EXTENSIONS = {'wav'}
 
 app.config['UPLOAD_FOLDER'] = upload_dir
+app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
 
 
 def allowed_file(filename):
@@ -29,30 +29,40 @@ def allowed_file(filename):
 def upload_file():
     if request.method == 'POST':
         # check if the post request has the file part
-        if 'file' not in request.files:
+        # return jsonify(request)
+        if 'file_attachment' not in request.files:
             flash('No file part')
             return redirect(request.url)
-        file = request.files['file']
+        file = request.files['file_attachment']
         # if user does not select file, browser also
         # submit an empty part without filename
+        filename = file.name
+
+        if filename != '':
+            file_ext = os.path.splitext(filename)[1]
+            return "file extension: " + str(file_ext)
+            # if file_ext not in app.config['ALLOWED_EXTENSIONS']:
+            #     abort(400)
+
         if file.filename == '':
             flash('No selected file')
-            return redirect(request.url)
+            # return redirect(request.url)
+            return "no file was selected or corrupted request"
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for('uploaded_file',
-                                    filename=filename))
+            # return redirect(url_for('uploaded_file',
+            #                         filename=filename))
+            return "file uploaded!"
 
-    return '''
-    this is returned if the post method
-    doesnt work
-    '''
+    return "average thingie always getting"
 
 
-@app.route('/uploads/<filename>')
+@app.route('/', methods=["GET"])
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'],
+
+    uploads = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
+    return send_from_directory(uploads,
                                filename)
 
 

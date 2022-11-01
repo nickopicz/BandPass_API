@@ -93,7 +93,7 @@ print("duration: ", dur)
 
 vad = webrtcvad.Vad()
 
-vad.set_mode(3)
+vad.set_mode(2)
 
 audio, sample_rate = read_wave(path1)
 
