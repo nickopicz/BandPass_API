@@ -5,6 +5,129 @@ from werkzeug.utils import secure_filename
 import tempfile
 import os
 from pyngrok import ngrok
+import speech_recognition as sr
+import soundfile as sf
+import numpy as np
+import contextlib
+import wave
+import webrtcvad
+
+
+def get_data(filepath):
+    with sf.SoundFile(filepath, 'r+') as f:
+        samp_rate = f.samplerate
+        data = f.read()
+        time = f.frames/samp_rate
+        f.close()
+        return data, time, samp_rate
+
+# These are helper functions given by the github for webrtcvad.
+# They enable the use of audio data to detect voiced data
+
+
+def read_wave(path):
+    """Reads a .wav file.
+    Takes the path, and returns (PCM audio data, sample rate).
+    """
+    with contextlib.closing(wave.open(path, 'rb')) as wf:
+        num_channels = wf.getnchannels()
+        assert num_channels in (1, 2)
+        sample_width = wf.getsampwidth()
+        assert sample_width == 2
+        sample_rate = wf.getframerate()
+        assert sample_rate in (8000, 16000, 32000, 48000)
+        pcm_data = wf.readframes(wf.getnframes())
+        return pcm_data, sample_rate
+
+
+class Frame(object):
+    """Represents a "frame" of audio data."""
+
+    def __init__(self, bytes, timestamp, duration):
+        self.bytes = bytes
+        self.timestamp = timestamp
+        self.duration = duration
+
+
+def frame_generator(frame_duration_ms, audio, sample_rate):
+    """Generates audio frames from PCM audio data.
+    Takes the desired frame duration in milliseconds, the PCM data, and
+    the sample rate.
+    Yields Frames of the requested duration.
+    """
+    n = int(sample_rate * (frame_duration_ms / 1000.0) * 2)
+    offset = 0
+    timestamp = 0.0
+    duration = (float(n) / sample_rate) / 2.0
+    while offset + n < len(audio):
+        yield Frame(audio[offset:offset + n], timestamp, duration)
+        timestamp += duration
+        offset += n
+
+
+def refine(path):
+    frames_data, time, samp_rate = get_data(path)
+
+    # This is time in ms divided by 5 to get the amount
+    # of frames collected that are in the original audio file,
+    #  so its time i ms divided by five
+
+    vad = webrtcvad.Vad()
+
+    vad.set_mode(2)
+
+    audio, sample_rate = read_wave(path)
+
+    frames = frame_generator(10, audio, sample_rate)
+
+    frames = list(frames)
+
+    segments = []
+
+    # This next loop iterates through the generated frames and
+    # checks if they contain speech. If the frame does, appends True
+    # to a list of the same length of the frames list.
+    #  Or this loop appends False to the list if it doesn't
+    # have any voiced frames
+
+    for frame in frames:
+        if vad.is_speech(frame.bytes, sample_rate):
+            segments.append(True)
+        else:
+            segments.append(False)
+
+    frames_2 = frames_data
+    i = 0
+
+    # This variable called factor, generates a ratio of frames to
+    # the amount of 10ms sample frames from the previous block of code.
+    # It uses this factor (ratio) as a way to convert the
+    # frames of the wav file to an index of the segments
+
+    factor = len(frames_data)/len(segments)
+
+    for i in range(len(segments)):
+        idx = int(i*factor)
+        end = int((i+1)*factor)
+        print("start idx: ", idx, " end index: ", end)
+        if segments[i] == False:
+            frames_2[idx:end] = 0
+        else:
+            continue
+
+    sf.write(path, frames_2, 48000)
+
+# =====================================================================
+# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# =====================================================================
+# FLASK API CODE STARTS BELOW HERE
+# =====================================================================
+# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# =====================================================================
+
+
 app = Flask(__name__)
 app.secret_key = "wqm7dajh"
 
@@ -50,14 +173,15 @@ def upload_file():
             # return redirect(request.url)
             return "no file was selected or corrupted request"
         if file:
-            filename = file.filename
+            filename = secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for('uploaded_file', filename=filename))
+            refine(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return redirect(url_for("upload_file", filename=filename))
 
     return "average thingie always getting"
 
 
-@app.route('/', methods=["GET"])
+@app.route("/")
 def uploaded_file(filename):
 
     uploads = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
