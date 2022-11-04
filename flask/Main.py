@@ -19,7 +19,7 @@ def get_data(filepath):
         data = f.read()
         time = f.frames/samp_rate
         f.close()
-        return data, time, samp_rate
+        return data
 
 # These are helper functions given by the github for webrtcvad.
 # They enable the use of audio data to detect voiced data
@@ -66,7 +66,7 @@ def frame_generator(frame_duration_ms, audio, sample_rate):
 
 
 def refine(path):
-    frames_data, time, samp_rate = get_data(path)
+    frames_data = get_data(path)
 
     # This is time in ms divided by 5 to get the amount
     # of frames collected that are in the original audio file,
@@ -109,7 +109,6 @@ def refine(path):
     for i in range(len(segments)):
         idx = int(i*factor)
         end = int((i+1)*factor)
-        print("start idx: ", idx, " end index: ", end)
         if segments[i] == False:
             frames_2[idx:end] = 0
         else:
@@ -164,29 +163,24 @@ def upload_file():
 
         if filename != '':
             file_ext = os.path.splitext(filename)[1]
-            # return "file extension: " + str(file_ext)
             if file_ext not in app.config['ALLOWED_EXTENSIONS']:
                 abort(400)
 
         if file.filename == '':
             flash('No selected file')
-            # return redirect(request.url)
-            return "no file was selected or corrupted request"
+            return redirect(request.url)
         if file:
             filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            file.save(os.path.join(
+                app.config['UPLOAD_FOLDER'], secure_filename(filename)))
             refine(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return redirect(url_for("upload_file", filename=filename))
-
-    return "average thingie always getting"
+            return uploaded_file(filename)
 
 
-@app.route("/")
+@app.route("/" + app.config["UPLOAD_FOLDER"])
 def uploaded_file(filename):
-
-    uploads = os.path.join(app.root_path, app.config['UPLOAD_FOLDER'])
-    return send_from_directory(uploads,
-                               filename)
+    return send_from_directory(app.config['UPLOAD_FOLDER'],
+                               filename, as_attachment=True)
 
 
 if __name__ == "__main__":
