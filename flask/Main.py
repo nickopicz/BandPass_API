@@ -11,7 +11,7 @@ import numpy as np
 import contextlib
 import wave
 import webrtcvad
-
+import config
 
 def get_data(filepath):
     with sf.SoundFile(filepath, 'r+') as f:
@@ -130,7 +130,7 @@ def refine(path):
 app = Flask(__name__)
 app.secret_key = "wqm7dajh"
 
-ngrok.set_auth_token("2GkgswOuCD9edDpcX4vAmal3Xs8_4pW8C8s7AAbitRR8Vf4EA")
+ngrok.set_auth_token(config.ngrok_key)
 
 
 run_with_ngrok(app)
