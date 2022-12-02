@@ -15,6 +15,13 @@ import config
 import io
 import re
 from google.cloud import speech
+from oauth2client.service_account import ServiceAccountCredentials
+
+
+import os
+
+cred_path = 'flask\speech-recog-363719-f9d84d991d98.json'
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
 
 
 def get_data(filepath):
@@ -67,6 +74,7 @@ def speech_to_text(path):
     config = {
         "language_code": language_code,
         "sample_rate_hertz": sample_rate_hertz,
+        "audio_channel_count": 2,
     }
 
     with io.open(path, "rb") as f:
@@ -236,7 +244,8 @@ def uploaded_file(filename):
 
 @app.route('/get_transcript/<path:filename>', methods=['GET'])
 def transcription(filename):
-    return speech_to_text(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    trans = speech_to_text(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    return trans
 
 
 app.add_url_rule(
