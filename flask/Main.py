@@ -12,6 +12,10 @@ import contextlib
 import wave
 import webrtcvad
 import config
+import io
+import re
+from google.cloud import speech
+
 
 def get_data(filepath):
     with sf.SoundFile(filepath, 'r+') as f:
@@ -39,6 +43,53 @@ def read_wave(path):
         pcm_data = wf.readframes(wf.getnframes())
         return pcm_data, sample_rate
 
+
+def print_sentences(response):
+    for result in response.results:
+        best_alternative = result.alternatives[0]
+        transcript = best_alternative.transcript
+        confidence = best_alternative.confidence
+        print("-" * 80)
+        print(f"Transcript: {transcript}")
+        print(f"Confidence: {confidence:.0%}")
+
+
+def speech_to_text(path):
+    language_code = "en-US"
+
+
+# Sample rate in Hertz of the audio data sent
+    sample_rate_hertz = 48000
+
+# Encoding of audio data sent. This sample sets this explicitly.
+# This field is optional for FLAC and WAV audio formats.
+
+    config = {
+        "language_code": language_code,
+        "sample_rate_hertz": sample_rate_hertz,
+    }
+
+    with io.open(path, "rb") as f:
+        content = f.read()
+
+    audio = {"content": content}
+    client = speech.SpeechClient()
+    response = client.recognize(config=config, audio=audio)
+
+    results = response.results
+
+    confidences = []
+
+    for i in results:
+        temp = re.findall(r'\d+', str(i.alternatives[0]))
+        confidences.append(float(".".join(temp)))
+
+    max_idx = confidences.index(max(confidences))
+
+    return response.results[max_idx].alternatives[0].transcript
+
+
+# speech_to_text(config, audio)
 
 class Frame(object):
     """Represents a "frame" of audio data."""
@@ -183,9 +234,15 @@ def uploaded_file(filename):
                                filename, as_attachment=True)
 
 
+@app.route('/get_transcript/<path:filename>', methods=['GET'])
+def transcription(filename):
+    return speech_to_text(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+
 app.add_url_rule(
     "/get_file/<path:filename>", endpoint="download_file", build_only=True
 )
+
 
 if __name__ == "__main__":
     app.run()
