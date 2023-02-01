@@ -20,7 +20,8 @@ pip install speech_recognition
 <br />pip install webrtcvad
 <br />pip install contextlib
 
-
+<br /> cd flask
+<br /> py Main.py
 
 # 2. Make a Recording.
 
@@ -28,7 +29,7 @@ You can create your own recording within this directory by running the file "mak
 This makes it easy to test, since it generates an uncorrupted wav file. 
 
 
-# 2. Clean up Audio.
+# 3. Clean up Audio.
 
 You can either make a short recording within the directory, or import an audio file from your system. 
 You can clean your custom audio by changing the "path1" variable of "Refine.py",
